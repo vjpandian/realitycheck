@@ -339,16 +339,16 @@ workflows:
               resource_class: [small, medium, medium+, large, xlarge]
               executor_type: [docker] # default, but re-defining for clarity
 
-  windows_resource_class_jobs:
-    jobs:
-      - check_if_windows_is_enabled
-      - executor_resource_class:
-          matrix:
-            parameters:
-              resource_class: [windows.medium, windows.large, windows.xlarge]
-              executor_type: [windows]
-          requires:
-            - check_if_windows_is_enabled
+  #windows_resource_class_jobs:
+  #  jobs:
+  #    - check_if_windows_is_enabled
+  #    - executor_resource_class:
+  #        matrix:
+  #          parameters:
+  #            resource_class: [windows.medium, windows.large, windows.xlarge]
+  #            executor_type: [windows]
+  #        requires:
+  #          - check_if_windows_is_enabled
 
   vm_jobs:
     jobs:
@@ -357,19 +357,19 @@ workflows:
       - docker_layer_caching
       - machine_dlc
   
-  aws_jobs:
-    jobs:
-      - check_if_environment_is_aws
-      - aws_arm:
-          requires:
-            - check_if_environment_is_aws
+  #aws_jobs:
+  #  jobs:
+  #    - check_if_environment_is_aws
+  #    - aws_arm:
+  #        requires:
+  #          - check_if_environment_is_aws
   
-  gcp_jobs:
-    jobs:
-      - check_if_environment_is_gcp
-      - android_machine:
-          requires:
-            - check_if_environment_is_gcp
+  #gcp_jobs:
+  #  jobs:
+  #    - check_if_environment_is_gcp
+  #    - android_machine:
+  #        requires:
+  #          - check_if_environment_is_gcp
 
   feature_jobs:
     jobs:
