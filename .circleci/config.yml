@@ -168,7 +168,7 @@ jobs:
 
   aws_arm:
     machine:
-      image: arm-default
+    #  image: arm-default
     resource_class: arm.medium
     steps:
       - run:
