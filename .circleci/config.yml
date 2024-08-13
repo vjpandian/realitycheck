@@ -344,9 +344,9 @@ workflows:
     jobs:
       - save_and_restore_cache
       - contexts:
-          context: aws-vijay-context
+          context: aws-vijay-context-random
       - multi-contexts:
-          context: aws-vijay-context
+          context: aws-vijay-context-random
       - write_workspace
       - read_workspace:
           requires:
