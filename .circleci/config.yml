@@ -119,7 +119,7 @@ jobs:
           command: grep "bar" output.txt | grep "beta"
 
   # job definition for verifying the resource_class per each executor_type
-  executor_:
+  executor:
     parameters:
       resource_class:
         type: string
@@ -303,7 +303,7 @@ jobs:
 workflows:
   docker_resource_class_jobs:
     jobs:
-      - executor_:
+      - executor:
           matrix:
             parameters:
               resource_class: [small, medium, medium+, large, xlarge]
@@ -314,7 +314,7 @@ workflows:
       and: 
        - equal: [true, << pipeline.parameters.enable-windows >>]
     jobs:
-      - executor_:
+      - executor:
           matrix:
             parameters:
               resource_class: [windows.medium, windows.large, windows.xlarge]
