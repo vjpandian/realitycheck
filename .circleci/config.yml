@@ -7,6 +7,9 @@ parameters:
   enable-gcp:
     type: boolean
     default: false
+  enable-windows:
+    type: boolean
+    default: false
 
 executors:
   docker: # Docker using the Base Convenience Image
@@ -319,15 +322,15 @@ workflows:
               executor_type: [docker] # default, but re-defining for clarity
 
   windows_resource_class_jobs:
+    when: 
+      and: 
+       - equal: [true, << pipeline.parameters.enable-windows >>]
     jobs:
-      - check_if_windows_is_enabled
       - executor_resource_class:
           matrix:
             parameters:
               resource_class: [windows.medium, windows.large, windows.xlarge]
               executor_type: [windows]
-          requires:
-            - check_if_windows_is_enabled
 
   vm_jobs:
     jobs:
