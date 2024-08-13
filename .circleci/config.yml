@@ -1,6 +1,9 @@
 version: 2.1
 
 parameters:
+  is-cci-server:
+    type: boolean
+    default: true
   enable-aws:
     type: boolean
     default: true
@@ -20,6 +23,17 @@ executors:
     docker:
       - image: 'cimg/base:stable'
     resource_class: <<parameters.resource_class>>
+
+  workspaces_defaults:
+    docker: 
+       - image: cimg/node:current
+    working_directory: ~/foo/bar
+
+  contexts_defaults: 
+    docker: 
+      - image: alpine:latest
+    working_directory: /a/contexts/test
+
   windows:  # Windows using the default windows image
     parameters:
       resource_class:
@@ -31,6 +45,16 @@ executors:
     resource_class: <<parameters.resource_class>>
 
 commands:
+  basic_docker_build: 
+    steps:
+      - run:
+          name: "Build a really basic docker image"
+          command: |
+            dockerfile=Dockerfile
+            echo "FROM alpine:latest" > $dockerfile
+            echo "RUN echo hello" >> $dockerfile
+            docker build -f $dockerfile --tag throwaway:$CIRCLE_BUILD_NUM .
+            docker run --rm throwaway:$CIRCLE_BUILD_NUM
   # resource_class verification commands to execute depending on executor_type
   verify_resource_class:
     parameters:
@@ -81,25 +105,6 @@ commands:
                     -Headers @{ "Circle-Token" = "$env:CIRCLE_TOKEN" }
                   $job.executor.resource_class | Select-String -Pattern "<<parameters.resource_class>>"
 
-remote_docker_defaults: &remote_docker_defaults
-  docker: [{image: 'cimg/base:stable'}]
-
-basic_docker_build: &basic_docker_build
-  name: "Build a really basic docker image"
-  command: |
-    dockerfile=Dockerfile
-    echo "FROM alpine:latest" > $dockerfile
-    echo "RUN echo hello" >> $dockerfile
-    docker build -f $dockerfile --tag throwaway:$CIRCLE_BUILD_NUM .
-    docker run --rm throwaway:$CIRCLE_BUILD_NUM
-
-contexts_defaults: &contexts_defaults
-  docker: [{image: 'alpine:latest'}]
-  working_directory: /a/contexts/test
-
-workspaces_defaults: &workspaces_defaults
-  docker: [{image: 'cimg/node:current'}]
-  working_directory: ~/foo/bar
 
 jobs:
   env-subst-example:
@@ -140,8 +145,7 @@ jobs:
   machine:
     machine: true
     steps:
-      - run:
-          <<: *basic_docker_build
+      - basic_docker_build
       - run: |
           echo $SLEEP
           date
@@ -155,8 +159,7 @@ jobs:
     machine:
       image: android-default
     steps:
-      - run:
-          <<: *basic_docker_build
+      - basic_docker_build
       - run: |
           echo $SLEEP
           date
@@ -171,8 +174,7 @@ jobs:
       image: default
     resource_class: arm.medium
     steps:
-      - run:
-          <<: *basic_docker_build
+      - basic_docker_build
       - run: |
           echo $SLEEP
           date
@@ -183,24 +185,22 @@ jobs:
       SLEEP: 1
 
   remote_docker:
-    <<: *remote_docker_defaults
+    executor: docker
     steps:
       - run: which docker
       - run: docker -v
       - setup_remote_docker
-      - run:
-          <<: *basic_docker_build
+      - basic_docker_build
       - run: docker version
 
   docker_layer_caching:
-    <<: *remote_docker_defaults
+    executor: docker
     steps:
       - run: which docker
       - run: docker -v
       - setup_remote_docker:
           docker_layer_caching: true
-      - run:
-          <<: *basic_docker_build
+      - basic_docker_build
       - run: docker version
 
   machine_dlc:
@@ -210,23 +210,22 @@ jobs:
     steps:
       - run: which docker
       - run: docker -v
-      - run:
-          <<: *basic_docker_build
+      - basic_docker_build
       - run: docker version
 
   # feature jobs
   contexts:
-    <<: *contexts_defaults
+    executor: contexts_defaults
     steps:
       - run: env | grep CONTEXT_END_TO_END_TEST_VAR
 
   multi-contexts:
-    <<: *contexts_defaults
+    executor: contexts_defaults
     steps:
       - run: env | grep MULTI_CONTEXT_END_TO_END_VAR
 
   write_workspace:
-    <<: *workspaces_defaults
+    executor: workspaces_defaults
     steps:
       - run: mkdir stuff
       - run: echo 5 >./stuff/thing
@@ -236,7 +235,7 @@ jobs:
             - stuff
 
   read_workspace:
-    <<: *workspaces_defaults
+    executor: workspaces_defaults
     steps:
       - attach_workspace:
            at: ./attached
