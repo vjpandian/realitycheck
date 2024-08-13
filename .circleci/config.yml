@@ -132,36 +132,7 @@ jobs:
           resource_class: <<parameters.resource_class>>
           executor_type: <<parameters.executor_type>>
 
-  check_if_environment_is_aws:
-    executor: docker
-    steps:
-      - run:
-          name: Verify AWS Environment
-          command: |
-            if [ -z "${CIRCLE_CLOUD_PROVIDER}" ];then
-              echo "You must provide the CIRCLE_CLOUD_PROVIDER environment variable in project settings for this job to run.";
-              exit 1;
-            fi
-            if [[ "${CIRCLE_CLOUD_PROVIDER}" != 'aws' ]]; then
-              echo "This installation is not in an AWS environment. Cancelling downstream workflow.";
-              curl -X POST "${CIRCLE_HOSTNAME%/}/api/v2/workflow/$CIRCLE_WORKFLOW_ID/cancel?circle-token=$CIRCLE_TOKEN"
-            fi
-
-  check_if_environment_is_gcp:
-    executor: docker
-    steps:
-      - run:
-          name: Verify GCP Environment
-          command: |
-            if [ -z "${CIRCLE_CLOUD_PROVIDER}" ];then
-              echo "You must provide the CIRCLE_CLOUD_PROVIDER environment variable in project settings for this job to run.";
-              exit 1;
-            fi
-            if [[ "${CIRCLE_CLOUD_PROVIDER}" != 'gcp' ]]; then
-              echo "This installation is not in an GCP environment. Cancelling downstream workflow.";
-              curl -X POST "${CIRCLE_HOSTNAME%/}/api/v2/workflow/$CIRCLE_WORKFLOW_ID/cancel?circle-token=$CIRCLE_TOKEN"
-            fi
-
+ 
   check_if_windows_is_enabled:
     executor: docker
     steps:
@@ -383,9 +354,9 @@ workflows:
     jobs:
       - save_and_restore_cache
       - contexts:
-          context: org-global
+          context: aws-vijay-context
       - multi-contexts:
-          context: individual-local
+          context: aws-vijay-context
       - write_workspace
       - read_workspace:
           requires:
