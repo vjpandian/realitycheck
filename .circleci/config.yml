@@ -98,7 +98,7 @@ contexts_defaults: &contexts_defaults
   working_directory: /a/contexts/test
 
 workspaces_defaults: &workspaces_defaults
-  docker: [{image: 'circleci/node:latest'}]
+  docker: [{image: 'cimg/node:current'}]
   working_directory: ~/foo/bar
 
 jobs:
