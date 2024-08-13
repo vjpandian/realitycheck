@@ -82,7 +82,7 @@ commands:
                   $job.executor.resource_class | Select-String -Pattern "<<parameters.resource_class>>"
 
 remote_docker_defaults: &remote_docker_defaults
-  docker: [{image: 'docker:17.06-git'}]
+  docker: [{image: 'cimg/base:stable'}]
 
 basic_docker_build: &basic_docker_build
   name: "Build a really basic docker image"
@@ -250,8 +250,7 @@ jobs:
           fi
 
   save_and_restore_cache:
-    docker:
-      - image: circleci/python
+    executor: docker
     working_directory: ~/realitycheck
     steps:
       - checkout
@@ -279,8 +278,7 @@ jobs:
             fi
 
   artifacts_test_results:
-    docker:
-      - image: python:3.6.0
+    executor: docker
     working_directory: ~/realitycheck
     steps:
       - checkout
