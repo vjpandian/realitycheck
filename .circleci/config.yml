@@ -307,7 +307,7 @@ workflows:
           matrix:
             parameters:
               resource_class: [small, medium, medium+, large, xlarge]
-              executor_type: [docker] # default, but re-defining for clarity
+              executor_type: [docker] ## default, but re-defining for clarity
 
   windows_resource_class_jobs:
     when: 
