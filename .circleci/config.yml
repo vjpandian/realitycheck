@@ -1,5 +1,13 @@
 version: 2.1
 
+parameters:
+  enable-aws:
+    type: boolean
+    default: true
+  enable-gcp:
+    type: boolean
+    default: false
+
 executors:
   docker: # Docker using the Base Convenience Image
     parameters:
@@ -358,18 +366,18 @@ workflows:
       - machine_dlc
   
   aws_jobs:
+    when: 
+      and: 
+       - equal: [true, << pipeline.parameters.enable-aws >>]
     jobs:
-      - check_if_environment_is_aws
-      - aws_arm:
-          requires:
-            - check_if_environment_is_aws
+      - aws_arm
   
   gcp_jobs:
+    when: 
+      and: 
+       - equal: [true, << pipeline.parameters.enable-gcp >>]
     jobs:
-      - check_if_environment_is_gcp
-      - android_machine:
-          requires:
-            - check_if_environment_is_gcp
+      - android_machine
 
   feature_jobs:
     jobs:
