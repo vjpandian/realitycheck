@@ -13,6 +13,9 @@ parameters:
   enable-windows:
     type: boolean
     default: false
+  dockerfile:
+    type: string
+    default: "Dockerfile"
 
 executors:
   docker: # Docker using the Base Convenience Image
@@ -50,11 +53,11 @@ commands:
       - run:
           name: "Build a really basic docker image"
           command: |
-            dockerfile=Dockerfile
-            echo "FROM alpine:latest" > $dockerfile
-            echo "RUN echo hello" >> $dockerfile
+            echo "FROM alpine:latest" > << pipeline.parameters.dockerfile >>
+            echo "RUN echo hello" >> << pipeline.parameters.dockerfile >>
             docker build -f $dockerfile --tag throwaway:$CIRCLE_BUILD_NUM .
             docker run --rm throwaway:$CIRCLE_BUILD_NUM
+            
   # resource_class verification commands to execute depending on executor_type
   verify_resource_class:
     parameters:
