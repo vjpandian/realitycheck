@@ -80,6 +80,11 @@ jobs:
     steps:
       - run-random-task
 
+  docker:
+    executor: docker
+    steps:
+      - run-random-task
+
   aws_arm:
     machine:
       image: default
@@ -137,11 +142,7 @@ jobs:
 workflows:
   docker_resource_class_jobs:
     jobs:
-      - executor:
-          matrix:
-            parameters:
-              resource_class: [vjpandian/eks-runner
-              executor_type: [docker]
+      - docker
 
   windows_resource_class_jobs:
     when:
