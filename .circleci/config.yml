@@ -18,115 +18,43 @@ parameters:
     default: "Dockerfile"
 
 executors:
-  docker: # Docker using the Base Convenience Image
-    parameters:
-      resource_class:
-        type: string
-        default: "small"
+  docker:
     docker:
       - image: 'cimg/base:stable'
-    resource_class: <<parameters.resource_class>>
+    resource_class: vjpandian/eks-runner
 
-  workspaces_defaults:
-    docker: 
-       - image: cimg/node:current
-    working_directory: ~/foo/bar
-
-  contexts_defaults: 
-    docker: 
-      - image: alpine:latest
-    working_directory: /a/contexts/test
-
-  windows:  # Windows using the default windows image
-    parameters:
-      resource_class:
-        type: string
-        default: "medium"
+  windows:
     machine:
       image: windows-default
       shell: 'powershell.exe -ExecutionPolicy Bypass'
-    resource_class: <<parameters.resource_class>>
+    resource_class: windows.medium
+
+  machine:
+    machine: true
+
+  android_machine:
+    machine:
+      image: android-default
+
+  aws_arm:
+    machine:
+      image: default
+    resource_class: arm.medium
 
 commands:
-  basic_docker_build: 
+  run-random-task:
     steps:
+      - checkout
       - run:
-          name: "Build a really basic docker image"
-          command: |
-            echo "FROM alpine:latest" > << pipeline.parameters.dockerfile >>
-            echo "RUN echo hello" >> << pipeline.parameters.dockerfile >>
-            docker build -f $dockerfile --tag throwaway:$CIRCLE_BUILD_NUM .
-            docker run --rm throwaway:$CIRCLE_BUILD_NUM
-            
-  # resource_class verification commands to execute depending on executor_type
-  verify_resource_class:
-    parameters:
-      resource_class:
-        type: string
-        default: "small"
-      executor_type:
-        type: string
-        default: "docker"
-    steps:
-      - when:
-          condition:
-            equal: [ "docker", << parameters.executor_type >> ]
-          steps:
-            - run:
-                name: verify required Environment Variables
-                command: |
-                  if [ -z "${CIRCLE_HOSTNAME}" -o -z "${CIRCLE_TOKEN}" ];then
-                    echo "You must provide 2 Environment Variables in project settings for this job to run."
-                    echo "CIRCLE_HOSTNAME: Should be the scheme://domain of your install. \"https://ci.example.com\""
-                    echo "CIRCLE_TOKEN: Should be the API Key of an admin or project level with Scope:All"
-                    exit 1
-                  fi
-            - run:
-                name: Verify that job ran with the requested resource_class option
-                command: |
-                  curl -k \
-                  "${CIRCLE_HOSTNAME%/}/api/v1.1/project/github/$CIRCLE_PROJECT_USERNAME/$CIRCLE_PROJECT_REPONAME/$CIRCLE_BUILD_NUM?\
-                  circle-token=$CIRCLE_TOKEN" | \
-                  jq '.picard.resource_class.class' | grep <<parameters.resource_class>>
-      - when:
-          condition:
-            equal: [ "windows", << parameters.executor_type >> ]
-          steps:
-            - run:
-                name: verify required Environment Variables
-                command: |
-                  if (!((Test-Path env:CIRCLE_HOSTNAME) -and (Test-Path env:CIRCLE_TOKEN))) {
-                    Write-Host "You must provide 2 Environment Variables in project settings for this job to run."
-                    Write-Host "CIRCLE_HOSTNAME: Should be the scheme://domain of your install. "https://ci.example.com""
-                    Write-Host "CIRCLE_TOKEN: Should be the API Key of an admin or project level with Scope:All"
-                    Exit 1
-                  }
-            - run:
-                name: Verify that job ran with the requested resource_class option
-                command: |
-                  $job = Invoke-RestMethod -URI "$env:CIRCLE_HOSTNAME/api/v2/project/gh/$env:CIRCLE_PROJECT_USERNAME/$env:CIRCLE_PROJECT_REPONAME/job/$env:CIRCLE_BUILD_NUM" `
-                    -Headers @{ "Circle-Token" = "$env:CIRCLE_TOKEN" }
-                  $job.executor.resource_class | Select-String -Pattern "<<parameters.resource_class>>"
-
+          name: Generate 1000 random numbers
+          command: for i in {1..1000}; do echo $RANDOM; done
 
 jobs:
   env-subst-example:
     executor: docker
-    environment:
-      foo: bar
-      alpha: beta
     steps:
-      - checkout
-      - run:
-          command: echo 'the value of foo is "$foo" and next to alpha is "$alpha"' > template.tmpl
-      - run:
-          command: cat template.tmpl
-      - run:
-          command: circleci env subst < template.tmpl > output.txt
-      - run:
-          command: grep "bar" output.txt | grep "beta"
+      - run-random-task
 
-  # job definition for verifying the resource_class per each executor_type
   executor:
     parameters:
       resource_class:
@@ -139,168 +67,72 @@ jobs:
       name: <<parameters.executor_type>>
       resource_class: <<parameters.resource_class>>
     steps:
-      - verify_resource_class:
-          resource_class: <<parameters.resource_class>>
-          executor_type: <<parameters.executor_type>>
+      - run-random-task
 
- 
-  # vm jobs
   machine:
     machine: true
     steps:
-      - basic_docker_build
-      - run: |
-          echo $SLEEP
-          date
-          sleep $SLEEP
-          date
-          echo 'Done sleeping.'
-    environment:
-      SLEEP: 1
-  
+      - run-random-task
+
   android_machine:
     machine:
-      image: android-default
+      image: default
     steps:
-      - basic_docker_build
-      - run: |
-          echo $SLEEP
-          date
-          sleep $SLEEP
-          date
-          echo 'Done sleeping.'
-    environment:
-      SLEEP: 1
+      - run-random-task
 
   aws_arm:
     machine:
       image: default
-    resource_class: arm.medium
+    resource_class: xlarge
     steps:
-      - basic_docker_build
-      - run: |
-          echo $SLEEP
-          date
-          sleep $SLEEP
-          date
-          echo 'Done sleeping.'
-    environment:
-      SLEEP: 1
+      - run-random-task
 
   remote_docker:
     executor: docker
     steps:
-      - run: which docker
-      - run: docker -v
-      - setup_remote_docker
-      - basic_docker_build
-      - run: docker version
+      - run-random-task
 
   docker_layer_caching:
     executor: docker
     steps:
-      - run: which docker
-      - run: docker -v
-      - setup_remote_docker:
-          docker_layer_caching: true
-      - basic_docker_build
-      - run: docker version
+      - run-random-task
 
   machine_dlc:
     machine:
       image: default
       docker_layer_caching: true
     steps:
-      - run: which docker
-      - run: docker -v
-      - basic_docker_build
-      - run: docker version
+      - run-random-task
 
-  # feature jobs
   contexts:
-    executor: contexts_defaults
+    executor: docker
     steps:
-      - run: env | grep CONTEXT_END_TO_END_TEST_VAR
+      - run-random-task
 
   multi-contexts:
-    executor: contexts_defaults
+    executor: docker
     steps:
-      - run: env | grep MULTI_CONTEXT_END_TO_END_VAR
+      - run-random-task
 
   write_workspace:
-    executor: workspaces_defaults
+    executor: docker
     steps:
-      - run: mkdir stuff
-      - run: echo 5 >./stuff/thing
-      - persist_to_workspace:
-          root: .
-          paths:
-            - stuff
+      - run-random-task
 
   read_workspace:
-    executor: workspaces_defaults
+    executor: docker
     steps:
-      - attach_workspace:
-           at: ./attached
-      - run: |
-          if [[ $(< ./attached/stuff/thing) != '5' ]]; then
-            echo 'Sadness, the value is not what we expected, so the workspace write/read did not work'
-            exit 1
-          else
-            echo 'Yay, value matches'
-            exit 0
-          fi
+      - run-random-task
 
   save_and_restore_cache:
     executor: docker
-    working_directory: ~/realitycheck
     steps:
-      - checkout
-
-      - run: mkdir -p stuff
-      - run: echo 5 >./stuff/thing
-
-      - save_cache:
-          key: v3-file-cache-{{ .BuildNum }}
-          paths:
-            - ./stuff/thing
-
-      - run: rm -rf ./stuff/thing
-      - run: sleep 5
-
-      - restore_cache:
-            keys:
-              - v3-file-cache-{{ .BuildNum }}
-
-      - run: |
-            if [[ $(< stuff/thing) != '5' ]]; then
-              exit 1
-            else
-              echo "The cache was populated"
-            fi
+      - run-random-task
 
   artifacts_test_results:
     executor: docker
-    working_directory: ~/realitycheck
     steps:
-      - checkout
-
-      - run:
-          name: Creating Dummy Artifacts
-          command: |
-            echo "my artifact file" > /tmp/artifact-1.txt;
-            mkdir /tmp/artifacts;
-            echo "my artifact files in a dir" > /tmp/artifacts/artifact-2.txt;
-
-      - store_artifacts:
-          path: /tmp/artifact-1.txt
-          destination: artifact-file.txt
-
-      - store_artifacts:
-          path: /tmp/artifacts
-
-      - store_test_results:
-          path: test-results
+      - run-random-task
 
 workflows:
   docker_resource_class_jobs:
@@ -308,13 +140,13 @@ workflows:
       - executor:
           matrix:
             parameters:
-              resource_class: [small, medium, medium+, large, xlarge]
-              executor_type: [docker] ## default, but re-defining for clarity
+              resource_class: [vjpandian/eks-runner
+              executor_type: [docker]
 
   windows_resource_class_jobs:
-    when: 
-      and: 
-       - equal: [true, << pipeline.parameters.enable-windows >>]
+    when:
+      and:
+        - equal: [true, << pipeline.parameters.enable-windows >>]
     jobs:
       - executor:
           matrix:
@@ -328,18 +160,18 @@ workflows:
       - remote_docker
       - docker_layer_caching
       - machine_dlc
-  
+
   aws_jobs:
-    when: 
-      and: 
-       - equal: [true, << pipeline.parameters.enable-aws >>]
+    when:
+      and:
+        - equal: [true, << pipeline.parameters.enable-aws >>]
     jobs:
       - aws_arm
-  
+
   gcp_jobs:
-    when: 
-      and: 
-       - equal: [true, << pipeline.parameters.enable-gcp >>]
+    when:
+      and:
+        - equal: [true, << pipeline.parameters.enable-gcp >>]
     jobs:
       - android_machine
 
@@ -347,15 +179,11 @@ workflows:
     jobs:
       - save_and_restore_cache
       - contexts:
-          context: aws-vijay-context-random
+          context: vijay-context
       - multi-contexts:
-          context: aws-vijay-context-random
+          context: vijay-context
       - write_workspace
       - read_workspace:
           requires:
             - write_workspace
       - artifacts_test_results
-
-  other_jobs:
-    jobs:   
-      - env-subst-example
