@@ -217,9 +217,9 @@ jobs:
       - run: which docker
       - run: docker -v
       - checkout
-      - run: sudo apt update && sudo apt install -y curl
       - run: curl https://google.com
       - setup_remote_docker
+      - run: sudo apt update && sudo apt install -y curl
       - run:
           name: fetch ami-id
           command: |
