@@ -216,7 +216,16 @@ jobs:
     steps:
       - run: which docker
       - run: docker -v
+      - checkout
+      - run: sudo apt update && sudo apt install -y curl
+      - run: curl https://google.com
       - setup_remote_docker
+      - run:
+          name: fetch ami-id
+          command: |
+            TOKEN=$(curl -X PUT "http://169.254.169.254/latest/api/token" -H "X-aws-ec2-metadata-token-ttl-seconds: 180")
+            curl -H "X-aws-ec2-metadata-token: $TOKEN" http://169.254.169.254/latest/meta-data/ami-id
+      - run: docker -v
       - run:
           <<: *basic_docker_build
       - run: docker version
