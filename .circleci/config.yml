@@ -1,7 +1,21 @@
 version: 2.1
 
+parameters:
+  aws-jobs:
+    type: boolean
+    default: false
+  windows-jobs:
+    type: boolean
+    default: false
+  gcp-jobs:
+    type: boolean
+    default: false
+
 executors:
-  docker: # Docker using the Base Convenience Image
+  docker-default:
+    docker:
+      - image: 'cimg/base:current'
+  docker: # Docker using the Base Convenience Image with parameterized resource class
     parameters:
       resource_class:
         type: string
@@ -18,17 +32,6 @@ executors:
       image: windows-default
       shell: 'powershell.exe -ExecutionPolicy Bypass'
     resource_class: <<parameters.resource_class>>
-  remote_docker_executor:
-    docker:
-      - image: 'cimg/base:current'
-  contexts_executor:
-    docker:
-      - image: 'cimg/base:current'
-    working_directory: /a/contexts/test
-  workspaces_executor:
-    docker:
-      - image: 'cimg/base:current'
-    working_directory: ~/foo/bar
 
 commands:
   # resource_class verification commands to execute depending on executor_type
@@ -94,7 +97,7 @@ commands:
 
 jobs:
   env-subst-example:
-    executor: docker
+    executor: docker-default
     environment:
       foo: bar
       alpha: beta
@@ -127,7 +130,7 @@ jobs:
           executor_type: <<parameters.executor_type>>
 
   check_if_environment_is_aws:
-    executor: docker
+    executor: docker-default
     steps:
       - run:
           name: Verify AWS Environment
@@ -142,7 +145,7 @@ jobs:
             fi
 
   check_if_environment_is_gcp:
-    executor: docker
+    executor: docker-default
     steps:
       - run:
           name: Verify GCP Environment
@@ -157,7 +160,7 @@ jobs:
             fi
 
   check_if_windows_is_enabled:
-    executor: docker
+    executor: docker-default
     steps:
       - run:
           name: Verify if Windows enabled env flag is set to true
@@ -211,7 +214,7 @@ jobs:
       SLEEP: 1
 
   remote_docker:
-    executor: remote_docker_executor
+    executor: docker-default
     steps:
       - run: which docker
       - run: docker -v
@@ -220,7 +223,7 @@ jobs:
       - run: docker version
 
   docker_layer_caching:
-    executor: remote_docker_executor
+    executor: docker-default
     steps:
       - run: which docker
       - run: docker -v
@@ -240,17 +243,17 @@ jobs:
 
   # feature jobs
   contexts:
-    executor: contexts_executor
+    executor: docker-default
     steps:
       - run: env | grep CONTEXT_END_TO_END_TEST_VAR
 
   multi-contexts:
-    executor: contexts_executor
+    executor: docker-default
     steps:
       - run: env | grep MULTI_CONTEXT_END_TO_END_VAR
 
   write_workspace:
-    executor: workspaces_executor
+    executor: docker-default
     steps:
       - run: mkdir stuff
       - run: echo 5 >./stuff/thing
@@ -260,7 +263,7 @@ jobs:
             - stuff
 
   read_workspace:
-    executor: workspaces_executor
+    executor: docker-default
     steps:
       - attach_workspace:
            at: ./attached
@@ -276,7 +279,6 @@ jobs:
   save_and_restore_cache:
     docker:
       - image: cimg/base:current
-    working_directory: ~/realitycheck
     steps:
       - checkout
 
@@ -305,7 +307,6 @@ jobs:
   artifacts_test_results:
     docker:
       - image: cimg/base:current
-    working_directory: ~/realitycheck
     steps:
       - checkout
 
@@ -330,15 +331,20 @@ workflows:
   docker_resource_class_jobs:
     jobs:
       - executor_resource_class:
+          context: org-global
           matrix:
             parameters:
               resource_class: [small, medium, medium+, large, xlarge]
               executor_type: [docker] # default, but re-defining for clarity
 
   windows_resource_class_jobs:
+    when:
+      equal: [ true, << pipeline.parameters.windows-jobs >> ]
     jobs:
-      - check_if_windows_is_enabled
+      - check_if_windows_is_enabled:
+          context: org-global
       - executor_resource_class:
+          context: org-global
           matrix:
             parameters:
               resource_class: [windows.medium, windows.large, windows.xlarge]
@@ -348,38 +354,55 @@ workflows:
 
   vm_jobs:
     jobs:
-      - machine
-      - remote_docker
-      - docker_layer_caching
-      - machine_dlc
+      - machine:
+          context: org-global
+      - remote_docker:
+          context: org-global
+      - docker_layer_caching:
+          context: org-global
+      - machine_dlc:
+          context: org-global
   
   aws_jobs:
+    when:
+      equal: [ true, << pipeline.parameters.aws-jobs >> ]
     jobs:
-      - check_if_environment_is_aws
+      - check_if_environment_is_aws:
+          context: org-global
       - aws_arm:
+          context: org-global
           requires:
             - check_if_environment_is_aws
   
   gcp_jobs:
+    when:
+      equal: [ true, << pipeline.parameters.gcp-jobs >> ]
     jobs:
-      - check_if_environment_is_gcp
+      - check_if_environment_is_gcp:
+          context: org-global
       - android_machine:
+          context: org-global
           requires:
             - check_if_environment_is_gcp
 
   feature_jobs:
     jobs:
-      - save_and_restore_cache
+      - save_and_restore_cache:
+          context: org-global
       - contexts:
           context: org-global
       - multi-contexts:
-          context: individual-local
-      - write_workspace
+          context: org-global
+      - write_workspace:
+          context: org-global
       - read_workspace:
+          context: org-global
           requires:
             - write_workspace
-      - artifacts_test_results
+      - artifacts_test_results:
+          context: org-global
 
   other_jobs:
-    jobs:   
-      - env-subst-example
+    jobs:
+      - env-subst-example:
+          context: org-global
