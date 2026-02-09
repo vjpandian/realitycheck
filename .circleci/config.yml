@@ -7,7 +7,7 @@ executors:
         type: string
         default: "small"
     docker:
-      - image: 'cimg/base:stable'
+      - image: 'cimg/base:current'
     resource_class: <<parameters.resource_class>>
   windows:  # Windows using the default windows image
     parameters:
@@ -18,6 +18,17 @@ executors:
       image: windows-default
       shell: 'powershell.exe -ExecutionPolicy Bypass'
     resource_class: <<parameters.resource_class>>
+  remote_docker_executor:
+    docker:
+      - image: 'cimg/base:current'
+  contexts_executor:
+    docker:
+      - image: 'cimg/base:current'
+    working_directory: /a/contexts/test
+  workspaces_executor:
+    docker:
+      - image: 'cimg/base:current'
+    working_directory: ~/foo/bar
 
 commands:
   # resource_class verification commands to execute depending on executor_type
@@ -70,25 +81,16 @@ commands:
                     -Headers @{ "Circle-Token" = "$env:CIRCLE_TOKEN" }
                   $job.executor.resource_class | Select-String -Pattern "<<parameters.resource_class>>"
 
-remote_docker_defaults: &remote_docker_defaults
-  docker: [{image: 'docker:17.06-git'}]
-
-basic_docker_build: &basic_docker_build
-  name: "Build a really basic docker image"
-  command: |
-    dockerfile=Dockerfile
-    echo "FROM alpine:latest" > $dockerfile
-    echo "RUN echo hello" >> $dockerfile
-    docker build -f $dockerfile --tag throwaway:$CIRCLE_BUILD_NUM .
-    docker run --rm throwaway:$CIRCLE_BUILD_NUM
-
-contexts_defaults: &contexts_defaults
-  docker: [{image: 'alpine:latest'}]
-  working_directory: /a/contexts/test
-
-workspaces_defaults: &workspaces_defaults
-  docker: [{image: 'circleci/node:latest'}]
-  working_directory: ~/foo/bar
+  basic_docker_build:
+    steps:
+      - run:
+          name: "Build a really basic docker image"
+          command: |
+            dockerfile=Dockerfile
+            echo "FROM alpine:latest" > $dockerfile
+            echo "RUN echo hello" >> $dockerfile
+            docker build -f $dockerfile --tag throwaway:$CIRCLE_BUILD_NUM .
+            docker run --rm throwaway:$CIRCLE_BUILD_NUM
 
 jobs:
   env-subst-example:
@@ -169,8 +171,7 @@ jobs:
   machine:
     machine: true
     steps:
-      - run:
-          <<: *basic_docker_build
+      - basic_docker_build
       - run: |
           echo $SLEEP
           date
@@ -184,8 +185,7 @@ jobs:
     machine:
       image: android-default
     steps:
-      - run:
-          <<: *basic_docker_build
+      - basic_docker_build
       - run: |
           echo $SLEEP
           date
@@ -200,8 +200,7 @@ jobs:
       image: arm-default
     resource_class: arm.medium
     steps:
-      - run:
-          <<: *basic_docker_build
+      - basic_docker_build
       - run: |
           echo $SLEEP
           date
@@ -212,24 +211,22 @@ jobs:
       SLEEP: 1
 
   remote_docker:
-    <<: *remote_docker_defaults
+    executor: remote_docker_executor
     steps:
       - run: which docker
       - run: docker -v
       - setup_remote_docker
-      - run:
-          <<: *basic_docker_build
+      - basic_docker_build
       - run: docker version
 
   docker_layer_caching:
-    <<: *remote_docker_defaults
+    executor: remote_docker_executor
     steps:
       - run: which docker
       - run: docker -v
       - setup_remote_docker:
           docker_layer_caching: true
-      - run:
-          <<: *basic_docker_build
+      - basic_docker_build
       - run: docker version
 
   machine_dlc:
@@ -238,23 +235,22 @@ jobs:
     steps:
       - run: which docker
       - run: docker -v
-      - run:
-          <<: *basic_docker_build
+      - basic_docker_build
       - run: docker version
 
   # feature jobs
   contexts:
-    <<: *contexts_defaults
+    executor: contexts_executor
     steps:
       - run: env | grep CONTEXT_END_TO_END_TEST_VAR
 
   multi-contexts:
-    <<: *contexts_defaults
+    executor: contexts_executor
     steps:
       - run: env | grep MULTI_CONTEXT_END_TO_END_VAR
 
   write_workspace:
-    <<: *workspaces_defaults
+    executor: workspaces_executor
     steps:
       - run: mkdir stuff
       - run: echo 5 >./stuff/thing
@@ -264,7 +260,7 @@ jobs:
             - stuff
 
   read_workspace:
-    <<: *workspaces_defaults
+    executor: workspaces_executor
     steps:
       - attach_workspace:
            at: ./attached
@@ -279,7 +275,7 @@ jobs:
 
   save_and_restore_cache:
     docker:
-      - image: circleci/python
+      - image: cimg/base:current
     working_directory: ~/realitycheck
     steps:
       - checkout
@@ -308,7 +304,7 @@ jobs:
 
   artifacts_test_results:
     docker:
-      - image: python:3.6.0
+      - image: cimg/base:current
     working_directory: ~/realitycheck
     steps:
       - checkout
